@@ -1,25 +1,51 @@
-import { Link, useNavigate } from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
+import {useMutation} from '@tanstack/react-query'
 
 import Modal from '../UI/Modal.jsx';
 import EventForm from './EventForm.jsx';
+import { createNewEvent, queryClient } from "../../util/http.js";
+import ErrorBlock from "../UI/ErrorBlock.jsx";
 
 export default function NewEvent() {
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
-  function handleSubmit(formData) {}
+    const { mutate,
+        isPending,
+        isError,
+        error } = useMutation({
+        mutationFn: createNewEvent,
+        onSuccess: () => {
+            // To tell that the data fetched by certain queries is outdated now.
+            // We must execute the command before calling the navigate method.
+            queryClient.invalidateQueries({
+                queryKey: ['events'], //The key is outdated
+                // exact: true, //Only queries with exactly that key would be invalidated
+            })
+            navigate('/events');
+        }
+    });
 
-  return (
-    <Modal onClose={() => navigate('../')}>
-      <EventForm onSubmit={handleSubmit}>
-        <>
-          <Link to="../" className="button-text">
-            Cancel
-          </Link>
-          <button type="submit" className="button">
-            Create
-          </button>
-        </>
-      </EventForm>
-    </Modal>
-  );
+    function handleSubmit(formData) {
+        mutate({ event: formData });
+    }
+
+    return (
+        <Modal onClose={() => navigate('../')}>
+            <EventForm onSubmit={handleSubmit}>
+                { isPending && 'Submitting...' }
+                { !isPending && (
+                    <>
+                        <Link to="../" className="button-text">
+                            Cancel
+                        </Link>
+                        <button type="submit" className="button">
+                            Create
+                        </button>
+                    </>
+                ) }
+            </EventForm>
+            { isError && <ErrorBlock title='Failed to create event' message={error.info?.message || 'Failed to create event'} /> }
+
+        </Modal>
+    );
 }
