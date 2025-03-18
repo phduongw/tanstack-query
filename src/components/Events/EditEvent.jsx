@@ -22,20 +22,21 @@ export default function EditEvent() {
             return updateEvent({ id, event });
         },
         onMutate: async ({ event }) => {
-            await queryClient.cancelQueries({ queryKey: ['events', id] }); //Cancel the queries if they are running
+            await queryClient.cancelQueries({ queryKey: ['events', id] }); // Cancel the queries if they are running to avoid overloading data before the mutate() done. Leading to a wrong cached data.
             const preData = queryClient.getQueryData(['events', id]); //Get the cached data by queryKey
-            queryClient.setQueryData(['events', id], event); //To replace the cached data and display on screen before the mutationFN done
+            queryClient.setQueryData(['events', id], event); // To replace the cached data and display on screen before the mutationFN done
 
             return {
                 preData,
-            }; //The returned value here will be a context (Third 3 param on the function of onError field below. It exactly is context variable below)
-        },// This field will execute before the mutationFN execute
+            }; // The returned value here will be a context (Third 3 param on the function of onError field below. It exactly is context variable below)
+        },// This field will execute before the mutationFN field executes
         onError: (error, data, context) => {
+            // data variable is the data which were passed at mutate()
             queryClient.setQueryData(['events', id], context.preData);
         }, // This field will execute if the mutation failed.
         onSettled: () => {
             queryClient.invalidateQueries(['events', id]);
-        } // This field will always execute, no matter the mutation fail or success
+        } // This field will always execute, no matter the mutationFN fails or successes
     });
 
     function handleSubmit(formData) {
